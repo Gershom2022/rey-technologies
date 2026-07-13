@@ -1,20 +1,30 @@
 import { Link } from "react-router-dom";
 import ServiceCard from "./ServiceCard";
 import { services } from "../data/services";
-import { Code, Globe, Smartphone, Cloud, BarChart3, Brain, Users, Shield, Server } from "lucide-react";
+import {
+  CustomSoftwareIcon,
+  WebDesignIcon,
+  MobileAppsIcon,
+  CloudSolutionsIcon,
+  DataAnalyticsIcon,
+  AIIcon,
+  ConsultancyIcon,
+  CybersecurityIcon,
+  InfrastructureIcon,
+} from "./ServiceIcons";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const iconMap = {
-  'custom-software': Code,
-  'web-design': Globe,
-  'mobile-apps': Smartphone,
-  'cloud-solutions': Cloud,
-  'data-analytics': BarChart3,
-  'ai-solutions': Brain,
-  'ict-consultancy': Users,
-  'cybersecurity': Shield,
-  'ict-infrastructure': Server,
+  'custom-software': CustomSoftwareIcon,
+  'web-design': WebDesignIcon,
+  'mobile-apps': MobileAppsIcon,
+  'cloud-solutions': CloudSolutionsIcon,
+  'data-analytics': DataAnalyticsIcon,
+  'ai-solutions': AIIcon,
+  'ict-consultancy': ConsultancyIcon,
+  'cybersecurity': CybersecurityIcon,
+  'ict-infrastructure': InfrastructureIcon,
 };
 
 function ServicesGrid() {

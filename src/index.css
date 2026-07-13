@@ -1,6 +1,18 @@
 @import "tailwindcss";
 
-@import "tailwindcss";
+:root {
+  /* Color Palette */
+  --color-primary: #0891B2;      /* Teal */
+  --color-secondary: #7C3AED;    /* Purple */
+  --color-accent: #FF6B35;       /* Coral */
+  --color-dark: #1E293B;         /* Dark Navy */
+  --color-light: #F8FAFC;        /* Light Gray */
+  
+  /* Tailwind color mapping */
+  --tw-colors-primary: #0891B2;
+  --tw-colors-secondary: #7C3AED;
+  --tw-colors-accent: #FF6B35;
+}
 
 @keyframes blob {
   0% { transform: translate(0px, 0px) scale(1); }
@@ -20,3 +32,12 @@
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* Tailwind utility color classes using custom properties */
+.bg-primary { background-color: var(--color-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.bg-accent { background-color: var(--color-accent); }
+.text-primary { color: var(--color-primary); }
+.text-accent { color: var(--color-accent); }
+.border-primary { border-color: var(--color-primary); }
+.border-accent { border-color: var(--color-accent); }
