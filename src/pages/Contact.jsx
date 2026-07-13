@@ -4,12 +4,8 @@ import { isValidEmail } from "../utils/validation";
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function Contact() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    message: ''
-  });
-  const [status, setStatus] = useState('idle'); // idle | submitting | success | error
+  const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [status, setStatus] = useState('idle');
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -19,30 +15,13 @@ function Contact() {
 
   const validate = () => {
     const errors = {};
-
-    // Name validation
-    if (!formData.name.trim()) {
-      errors.name = 'Name is required';
-    } else if (formData.name.trim().length < 4) {
-      errors.name = 'Name must be at least 4 characters';
-    }
-
-    // Email validation
-    if (!formData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!isValidEmail(formData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-
-    // Message validation
-    if (!formData.message.trim()) {
-      errors.message = 'Message is required';
-    } else if (formData.message.trim().length < 10) {
-      errors.message = 'Message must be at least 10 characters';
-    } else if (formData.message.trim().length > 500) {
-      errors.message = 'Message must not exceed 500 characters';
-    }
-
+    if (!formData.name.trim()) errors.name = 'Name is required';
+    else if (formData.name.trim().length < 4) errors.name = 'Name must be at least 4 characters';
+    if (!formData.email.trim()) errors.email = 'Email is required';
+    else if (!isValidEmail(formData.email)) errors.email = 'Please enter a valid email address';
+    if (!formData.message.trim()) errors.message = 'Message is required';
+    else if (formData.message.trim().length < 10) errors.message = 'Message must be at least 10 characters';
+    else if (formData.message.trim().length > 500) errors.message = 'Message must not exceed 500 characters';
     return errors;
   };
 
@@ -50,7 +29,6 @@ function Contact() {
     e.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
-
     if (Object.keys(validationErrors).length > 0) return;
 
     setStatus('submitting');
@@ -70,87 +48,104 @@ function Contact() {
 
       setStatus('success');
       setFormData({ name: '', email: '', message: '' });
-      // Clear success message after 5 seconds
       setTimeout(() => setStatus('idle'), 5000);
     } catch (err) {
-      console.error('Error submitting form:', err);
+      console.error(err);
       setStatus('error');
-      // Clear error message after 5 seconds
-      setTimeout(() => setStatus('idle'), 5000);
     }
   };
 
   return (
-    <div className="py-16 px-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">Get in Touch</h1>
-      <p className="text-gray-600 mb-8">Have an Inquiry? Welcome on board!</p>
+    <section className="py-16 px-8 bg-light">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-4xl font-bold mb-2 text-dark">Get in Touch</h1>
+        <p className="text-gray-600 mb-12">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium mb-1">Name</label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
+        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-lg shadow-md border-2 border-primary border-opacity-20">
+          {/* Name Field */}
+          <div>
+            <label className="block text-sm font-semibold text-dark mb-2">Name</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              disabled={status === 'submitting'}
+              className={`w-full border-2 rounded-lg px-4 py-3 focus:outline-none transition-all ${
+                errors.name 
+                  ? 'border-red-500 focus:border-red-600' 
+                  : 'border-primary focus:border-secondary focus:ring-2 focus:ring-primary focus:ring-opacity-20'
+              } disabled:opacity-50 disabled:bg-gray-100`}
+              placeholder="Your name"
+            />
+            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+          </div>
+
+          {/* Email Field */}
+          <div>
+            <label className="block text-sm font-semibold text-dark mb-2">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              disabled={status === 'submitting'}
+              className={`w-full border-2 rounded-lg px-4 py-3 focus:outline-none transition-all ${
+                errors.email 
+                  ? 'border-red-500 focus:border-red-600' 
+                  : 'border-primary focus:border-secondary focus:ring-2 focus:ring-primary focus:ring-opacity-20'
+              } disabled:opacity-50 disabled:bg-gray-100`}
+              placeholder="your@email.com"
+            />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          </div>
+
+          {/* Message Field */}
+          <div>
+            <label className="block text-sm font-semibold text-dark mb-2">Message</label>
+            <textarea
+              name="message"
+              value={formData.message}
+              onChange={handleChange}
+              disabled={status === 'submitting'}
+              rows="6"
+              className={`w-full border-2 rounded-lg px-4 py-3 focus:outline-none transition-all resize-none ${
+                errors.message 
+                  ? 'border-red-500 focus:border-red-600' 
+                  : 'border-primary focus:border-secondary focus:ring-2 focus:ring-primary focus:ring-opacity-20'
+              } disabled:opacity-50 disabled:bg-gray-100`}
+              placeholder="Your message here..."
+            />
+            <div className="flex justify-between mt-2">
+              <p className="text-red-500 text-sm">{errors.message || ''}</p>
+              <p className="text-gray-500 text-sm">{formData.message.length}/500</p>
+            </div>
+          </div>
+
+          {/* Status Messages */}
+          {status === 'success' && (
+            <p className="bg-green-100 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
+              ✓ Thanks for reaching out! We'll get back to you soon.
+            </p>
+          )}
+
+          {status === 'error' && (
+            <p className="bg-red-100 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
+              ✗ Something went wrong. Please try again.
+            </p>
+          )}
+
+          {/* Submit Button */}
+          <button
+            type="submit"
             disabled={status === 'submitting'}
-            className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${
-              errors.name ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            disabled={status === 'submitting'}
-            className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${
-              errors.email ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Message</label>
-          <textarea
-            name="message"
-            value={formData.message}
-            onChange={handleChange}
-            rows={5}
-            disabled={status === 'submitting'}
-            className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${
-              errors.message ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message}</p>}
-          <p className="text-gray-400 text-xs mt-1 text-right">
-            {formData.message.length}/500
-          </p>
-        </div>
-
-        <button
-          type="submit"
-          disabled={status === 'submitting'}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
-        >
-          {status === 'submitting' ? 'Sending...' : 'Send Message'}
-        </button>
-
-        {status === 'success' && (
-          <p className="text-green-600 text-sm mt-2">✓ Thanks! We'll be in touch soon.</p>
-        )}
-
-        {status === 'error' && (
-          <p className="text-red-600 text-sm mt-2">✗ Failed to send message. Please try again later.</p>
-        )}
-      </form>
-    </div>
+            className="w-full bg-accent text-white py-3 rounded-lg font-semibold text-lg hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105"
+          >
+            {status === 'submitting' ? 'Sending...' : 'Send Message'}
+          </button>
+        </form>
+      </div>
+    </section>
   );
 }
 
