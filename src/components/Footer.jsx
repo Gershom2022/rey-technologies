@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Mail, Phone, MapPin } from "lucide-react";
+import { Link } from "react-router-dom"; // Add this import
 import { isValidEmail } from "../utils/validation";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -175,13 +176,13 @@ function Footer() {
         {/* Divider */}
         <div className="border-t border-gray-800 my-8"></div>
 
-        {/* Legal Links & Copyright */}
+        {/* Legal Links & Copyright - ONLY THIS SECTION CHANGED */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-gray-500">© 2024 Rey Technologies Limited. All rights reserved.</p>
           <div className="flex gap-6 text-xs flex-wrap justify-center">
-            <a href="/privacy-policy" className="text-gray-400 hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="/terms-of-service" className="text-gray-400 hover:text-primary transition-colors">Terms of Service</a>
-            <a href="/cookie-policy" className="text-gray-400 hover:text-primary transition-colors">Cookie Policy</a>
+            <Link to="/privacy" className="text-gray-400 hover:text-primary transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="text-gray-400 hover:text-primary transition-colors">Terms of Service</Link>
+            <Link to="/cookies" className="text-gray-400 hover:text-primary transition-colors">Cookie Policy</Link>
           </div>
         </div>
       </div>
