@@ -2,7 +2,7 @@ function TermsOfService() {
   return (
     <div className="py-16 px-8 max-w-4xl mx-auto">
       <h1 className="text-4xl font-bold text-dark mb-2">Terms of Service</h1>
-      <p className="text-gray-600 mb-8">Last Updated: January 2024</p>
+      <p className="text-gray-600 mb-8">Last Updated: July 2026</p>
       
       <div className="space-y-8 text-gray-700">
         <section>
