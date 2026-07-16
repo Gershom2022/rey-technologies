@@ -178,7 +178,7 @@ function Footer() {
 
         {/* Legal Links & Copyright - ONLY THIS SECTION CHANGED */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-gray-500">© 2024 Rey Technologies Limited. All rights reserved.</p>
+          <p className="text-xs text-gray-500">© 2026 Rey Technologies Limited. All rights reserved.</p>
           <div className="flex gap-6 text-xs flex-wrap justify-center">
             <Link to="/privacy" className="text-gray-400 hover:text-primary transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="text-gray-400 hover:text-primary transition-colors">Terms of Service</Link>

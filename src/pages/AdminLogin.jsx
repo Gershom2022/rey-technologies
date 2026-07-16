@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { publicFetch } from '../utils/api';
+import { useAuth } from '../hooks/useAuth'; // ← ADD THIS IMPORT
 
 function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -9,6 +10,7 @@ function AdminLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { checkAuth } = useAuth(); // ← ADD THIS LINE
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,6 +27,9 @@ function AdminLogin() {
       localStorage.setItem('adminToken', data.token);
       // Also save as 'token' for backward compatibility
       localStorage.setItem('token', data.token);
+      
+      // Refresh auth state before redirecting
+      checkAuth(); // ← ADD THIS LINE
       
       // Redirect to dashboard
       navigate('/admin/dashboard');

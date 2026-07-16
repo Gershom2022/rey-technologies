@@ -9,10 +9,14 @@ import {
   Search, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { authFetch } from "../utils/api";
+import { useAuth } from "../hooks/useAuth"; // ← ADD THIS IMPORT
 
 const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 function AdminDashboard() {
+  // Add the useAuth hook here
+  const { isAuthenticated, logout } = useAuth(); // ← ADD THIS LINE
+
   const [inquiries, setInquiries] = useState([]);
   const [summary, setSummary] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,18 +36,17 @@ function AdminDashboard() {
   const ITEMS_PER_PAGE = 10;
 
   const loadData = async () => {
+    // Check if user is authenticated FIRST
+    if (!isAuthenticated) {
+      setError('Please log in to access the dashboard');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError('');
     
     try {
-      // Check if user is authenticated
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        setError('Please log in to access the dashboard');
-        setLoading(false);
-        return;
-      }
-
       // Fetch both endpoints
       const [inquiriesData, summaryData] = await Promise.all([
         authFetch('/api/inquiries'),
@@ -70,11 +73,9 @@ function AdminDashboard() {
       console.error('Error loading data:', err);
       setError(err.message || 'Failed to load dashboard data');
       
-      // If unauthorized, redirect to login
+      // If unauthorized, use logout from hook
       if (err.message.includes('401') || err.message.includes('token')) {
-        localStorage.removeItem('token');
-        sessionStorage.removeItem('token');
-        window.location.href = '/admin/login';
+        logout(); // ← UPDATED: Use logout from hook
       }
     } finally {
       setLoading(false);
@@ -83,7 +84,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [isAuthenticated]); // ← ADDED: Reload when auth state changes
 
   const handleMarkContacted = async (id) => {
     try {
@@ -132,10 +133,8 @@ function AdminDashboard() {
     { name: 'Contacted', value: stats.contacted }
   ].filter(d => d.value > 0);
 
-  // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
+  // Handle logout - redirect to login (navbar will handle the actual logout)
+  const goToLogin = () => {
     window.location.href = '/admin/login';
   };
 
@@ -178,7 +177,7 @@ function AdminDashboard() {
               Retry
             </button>
             <button
-              onClick={handleLogout}
+              onClick={goToLogin}
               className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
             >
               Go to Login
@@ -192,7 +191,7 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* Header - Logout button removed, only Refresh remains */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -206,12 +205,7 @@ function AdminDashboard() {
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </button>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center px-4 py-2 bg-red-50 border border-red-200 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
-            >
-              Logout
-            </button>
+            {/* Logout button removed - now only in navbar */}
           </div>
         </div>
 
