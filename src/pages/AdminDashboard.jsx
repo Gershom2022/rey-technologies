@@ -6,17 +6,19 @@ import {
 import { 
   MessageSquare, TrendingUp, Clock, 
   CheckCircle, XCircle, Eye, RefreshCw,
-  Search, ChevronLeft, ChevronRight
+  Search, ChevronLeft, ChevronRight,
+  Edit, Trash2, Download, Filter,
+  Mail, Phone, Calendar, Tag, AlertCircle, Users
 } from "lucide-react";
 import { authFetch } from "../utils/api";
-import { useAuth } from "../hooks/useAuth"; // ← ADD THIS IMPORT
+import { useAuth } from "../hooks/useAuth";
 
 const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 function AdminDashboard() {
-  // Add the useAuth hook here
-  const { isAuthenticated, logout } = useAuth(); // ← ADD THIS LINE
-
+  const { isAuthenticated, logout } = useAuth();
+  
+  // State management
   const [inquiries, setInquiries] = useState([]);
   const [summary, setSummary] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,17 +28,19 @@ function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editData, setEditData] = useState({});
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
     contacted: 0,
-    today: 0
+    today: 0,
+    conversionRate: 0,
   });
 
   const ITEMS_PER_PAGE = 10;
 
   const loadData = async () => {
-    // Check if user is authenticated FIRST
     if (!isAuthenticated) {
       setError('Please log in to access the dashboard');
       setLoading(false);
@@ -47,13 +51,11 @@ function AdminDashboard() {
     setError('');
     
     try {
-      // Fetch both endpoints
       const [inquiriesData, summaryData] = await Promise.all([
         authFetch('/api/inquiries'),
         authFetch('/api/analytics/summary')
       ]);
       
-      // Handle the response structure
       const inquiriesList = inquiriesData.inquiries || [];
       const summaryList = summaryData.summary || [];
       
@@ -67,15 +69,21 @@ function AdminDashboard() {
       const today = inquiriesList.filter(i => 
         new Date(i.created_at).toDateString() === new Date().toDateString()
       ).length;
+      const conversionRate = total > 0 ? Math.round((contacted / total) * 100) : 0;
       
-      setStats({ total, pending, contacted, today });
+      setStats({
+        total,
+        pending,
+        contacted,
+        today,
+        conversionRate,
+      });
     } catch (err) {
       console.error('Error loading data:', err);
       setError(err.message || 'Failed to load dashboard data');
       
-      // If unauthorized, use logout from hook
       if (err.message.includes('401') || err.message.includes('token')) {
-        logout(); // ← UPDATED: Use logout from hook
+        logout();
       }
     } finally {
       setLoading(false);
@@ -84,38 +92,88 @@ function AdminDashboard() {
 
   useEffect(() => {
     loadData();
-  }, [isAuthenticated]); // ← ADDED: Reload when auth state changes
+  }, [isAuthenticated]);
 
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Subject', 'Message', 'Status', 'Date'];
+    const rows = inquiries.map(inq => [
+      inq.id,
+      inq.name,
+      inq.email,
+      inq.phone || '',
+      inq.subject || '',
+      inq.message,
+      inq.status,
+      new Date(inq.created_at).toLocaleDateString()
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inquiries_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  // Handle marking inquiry as contacted
   const handleMarkContacted = async (id) => {
     try {
       await authFetch(`/api/inquiries/${id}`, { method: 'PATCH' });
-      loadData(); // Refresh data
+      loadData();
     } catch (err) {
       alert(err.message);
     }
   };
 
+  // Handle delete inquiry
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this inquiry permanently?')) return;
     try {
       await authFetch(`/api/inquiries/${id}`, { method: 'DELETE' });
-      loadData(); // Refresh data
+      loadData();
     } catch (err) {
       alert(err.message);
     }
   };
 
+  // Handle update inquiry
+  const handleUpdateInquiry = async (id, data) => {
+    try {
+      await authFetch(`/api/inquiries/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+      loadData();
+      setShowEditModal(false);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  // Handle view details
   const handleViewDetails = (inquiry) => {
     setSelectedInquiry(inquiry);
     setShowDetailModal(true);
   };
 
+  // Handle edit
+  const handleEdit = (inquiry) => {
+    setSelectedInquiry(inquiry);
+    setEditData({ ...inquiry });
+    setShowEditModal(true);
+  };
+
   // Filter and search inquiries
   const filteredInquiries = inquiries.filter(inq => {
     const matchesSearch = 
-      inq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inq.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inq.message.toLowerCase().includes(searchTerm.toLowerCase());
+      inq.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inq.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inq.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inq.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inq.subject?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || inq.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -133,7 +191,7 @@ function AdminDashboard() {
     { name: 'Contacted', value: stats.contacted }
   ].filter(d => d.value > 0);
 
-  // Handle logout - redirect to login (navbar will handle the actual logout)
+  // Handle logout
   const goToLogin = () => {
     window.location.href = '/admin/login';
   };
@@ -191,7 +249,7 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header - Logout button removed, only Refresh remains */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -199,13 +257,19 @@ function AdminDashboard() {
           </div>
           <div className="flex gap-3 mt-4 sm:mt-0">
             <button
+              onClick={exportToCSV}
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </button>
+            <button
               onClick={loadData}
               className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </button>
-            {/* Logout button removed - now only in navbar */}
           </div>
         </div>
 
@@ -238,7 +302,8 @@ function AdminDashboard() {
               </div>
             </div>
             <div className="mt-4 flex items-center text-xs text-gray-500">
-              Awaiting response
+              <AlertCircle className="w-3 h-3 mr-1 text-yellow-500" />
+              Need attention
             </div>
           </div>
 
@@ -254,7 +319,7 @@ function AdminDashboard() {
             </div>
             <div className="mt-4 flex items-center text-xs text-gray-500">
               <TrendingUp className="w-3 h-3 mr-1" />
-              {stats.total > 0 ? Math.round((stats.contacted / stats.total) * 100) : 0}% conversion rate
+              {stats.conversionRate}% conversion rate
             </div>
           </div>
 
@@ -404,6 +469,8 @@ function AdminDashboard() {
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Phone</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Subject</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Message</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Date</th>
@@ -413,7 +480,7 @@ function AdminDashboard() {
               <tbody className="divide-y divide-gray-200">
                 {paginatedInquiries.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-4 py-12 text-center text-gray-500">
+                    <td colSpan="8" className="px-4 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center">
                         <MessageSquare className="w-12 h-12 text-gray-300 mb-3" />
                         <p className="text-sm font-medium">No inquiries found</p>
@@ -427,13 +494,23 @@ function AdminDashboard() {
                       <td className="px-4 py-3">
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
-                            {inq.name.charAt(0).toUpperCase()}
+                            {inq.name?.charAt(0).toUpperCase() || '?'}
                           </div>
-                          <span className="ml-3 text-sm font-medium text-gray-900">{inq.name}</span>
+                          <span className="ml-3 text-sm font-medium text-gray-900 truncate max-w-[100px]">
+                            {inq.name}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{inq.email}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell max-w-xs truncate">
+                      <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[120px]">
+                        {inq.email}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell truncate max-w-[120px]">
+                        {inq.phone || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden lg:table-cell truncate max-w-[120px]">
+                        {inq.subject || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell truncate max-w-[150px]">
                         {inq.message}
                       </td>
                       <td className="px-4 py-3">
@@ -445,7 +522,7 @@ function AdminDashboard() {
                           <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                             inq.status === 'contacted' ? 'bg-green-500' : 'bg-yellow-500'
                           }`}></span>
-                          {inq.status}
+                          {inq.status || 'pending'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">
@@ -474,11 +551,18 @@ function AdminDashboard() {
                             </button>
                           )}
                           <button
+                            onClick={() => handleEdit(inq)}
+                            className="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleDelete(inq.id)}
                             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete"
                           >
-                            <XCircle className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -539,6 +623,14 @@ function AdminDashboard() {
                 <p className="text-sm text-gray-900 mt-1">{selectedInquiry.email}</p>
               </div>
               <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</label>
+                <p className="text-sm text-gray-900 mt-1">{selectedInquiry.phone || 'Not provided'}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</label>
+                <p className="text-sm text-gray-900 mt-1">{selectedInquiry.subject || 'No subject'}</p>
+              </div>
+              <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</label>
                 <p className="mt-1">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -552,7 +644,7 @@ function AdminDashboard() {
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Message</label>
-                <p className="text-sm text-gray-700 mt-1 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-700 mt-1 p-3 bg-gray-50 rounded-lg whitespace-pre-wrap">
                   {selectedInquiry.message}
                 </p>
               </div>
@@ -581,6 +673,95 @@ function AdminDashboard() {
                   Mark Contacted
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && selectedInquiry && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Edit Inquiry</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <XCircle className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Name</label>
+                <input
+                  type="text"
+                  value={editData.name || ''}
+                  onChange={(e) => setEditData({...editData, name: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  value={editData.email || ''}
+                  onChange={(e) => setEditData({...editData, email: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Phone</label>
+                <input
+                  type="text"
+                  value={editData.phone || ''}
+                  onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Subject</label>
+                <input
+                  type="text"
+                  value={editData.subject || ''}
+                  onChange={(e) => setEditData({...editData, subject: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Status</label>
+                <select
+                  value={editData.status || 'pending'}
+                  onChange={(e) => setEditData({...editData, status: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="contacted">Contacted</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Message</label>
+                <textarea
+                  value={editData.message || ''}
+                  onChange={(e) => setEditData({...editData, message: e.target.value})}
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleUpdateInquiry(selectedInquiry.id, editData)}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              >
+                Save Changes
+              </button>
             </div>
           </div>
         </div>
