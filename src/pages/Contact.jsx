@@ -1,40 +1,25 @@
-import { useState } from "react";
-import { isValidEmail } from "../utils/validation";
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// pages/Contact.jsx
+import { useState } from 'react';
+import { Mail, Phone, MapPin, Send } from 'lucide-react';
 
 function Contact() {
-  const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    subject: '', // ← NEW: Subject field
+    message: ''
+  });
   const [status, setStatus] = useState('idle');
-  const [errors, setErrors] = useState({});
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const validate = () => {
-    const errors = {};
-    if (!formData.name.trim()) errors.name = 'Name is required';
-    else if (formData.name.trim().length < 4) errors.name = 'Name must be at least 4 characters';
-    if (!formData.email.trim()) errors.email = 'Email is required';
-    else if (!isValidEmail(formData.email)) errors.email = 'Please enter a valid email address';
-    if (!formData.message.trim()) errors.message = 'Message is required';
-    else if (formData.message.trim().length < 10) errors.message = 'Message must be at least 10 characters';
-    else if (formData.message.trim().length > 500) errors.message = 'Message must not exceed 500 characters';
-    return errors;
-  };
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validate();
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
-
     setStatus('submitting');
+    setError('');
 
     try {
-      const response = await fetch(`${API_URL}/api/inquiries`, {
+      const response = await fetch('http://localhost:5000/api/inquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -42,110 +27,179 @@ function Contact() {
 
       const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error || 'Something went wrong');
+      if (data.success) {
+        setStatus('success');
+        setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+        setTimeout(() => setStatus('idle'), 5000);
+      } else {
+        setError(data.error || 'Something went wrong');
+        setStatus('error');
       }
-
-      setStatus('success');
-      setFormData({ name: '', email: '', message: '' });
-      setTimeout(() => setStatus('idle'), 5000);
     } catch (err) {
-      console.error(err);
+      setError('Failed to send message. Please try again.');
       setStatus('error');
     }
   };
 
   return (
-    <section className="py-16 px-8 bg-light">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold mb-2 text-dark">Get in Touch</h1>
-        <p className="text-gray-600 mb-12">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+    <div className="min-h-screen bg-gray-50 py-16 px-4">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-4xl font-bold text-center mb-12">Contact Us</h1>
+        
+        <div className="grid md:grid-cols-2 gap-12">
+          {/* Contact Form */}
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="John Doe"
+                />
+              </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-lg shadow-md border-2 border-primary border-opacity-20">
-          {/* Name Field */}
-          <div>
-            <label className="block text-sm font-semibold text-dark mb-2">Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              disabled={status === 'submitting'}
-              className={`w-full border-2 rounded-lg px-4 py-3 focus:outline-none transition-all ${
-                errors.name 
-                  ? 'border-red-500 focus:border-red-600' 
-                  : 'border-primary focus:border-secondary focus:ring-2 focus:ring-primary focus:ring-opacity-20'
-              } disabled:opacity-50 disabled:bg-gray-100`}
-              placeholder="Your name"
-            />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="john@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="+254 712 345 678"
+                />
+              </div>
+
+              {/* ← NEW: Subject Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Subject *
+                </label>
+                <select
+                  required
+                  value={formData.subject}
+                  onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select a subject...</option>
+                  <option value="General Inquiry">General Inquiry</option>
+                  <option value="Web Development">Web Development</option>
+                  <option value="Mobile App Development">Mobile App Development</option>
+                  <option value="Cloud Solutions">Cloud Solutions</option>
+                  <option value="Custom Software">Custom Software</option>
+                  <option value="UI/UX Design">UI/UX Design</option>
+                  <option value="Technical Support">Technical Support</option>
+                  <option value="Partnership">Partnership</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Message *
+                </label>
+                <textarea
+                  required
+                  rows="5"
+                  value={formData.message}
+                  onChange={(e) => setFormData({...formData, message: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Tell us about your project..."
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
+              {status === 'success' && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
+                  ✅ Your message has been sent! We'll respond within 24 hours.
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={status === 'submitting'}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {status === 'submitting' ? (
+                  <>
+                    <span className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></span>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send size={18} />
+                    Send Message
+                  </>
+                )}
+              </button>
+            </form>
           </div>
 
-          {/* Email Field */}
-          <div>
-            <label className="block text-sm font-semibold text-dark mb-2">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              disabled={status === 'submitting'}
-              className={`w-full border-2 rounded-lg px-4 py-3 focus:outline-none transition-all ${
-                errors.email 
-                  ? 'border-red-500 focus:border-red-600' 
-                  : 'border-primary focus:border-secondary focus:ring-2 focus:ring-primary focus:ring-opacity-20'
-              } disabled:opacity-50 disabled:bg-gray-100`}
-              placeholder="your@email.com"
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
+          {/* Contact Info */}
+          <div className="space-y-8">
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <h3 className="text-xl font-semibold mb-6">Get in Touch</h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Phone className="w-5 h-5 text-blue-600 mt-1" />
+                  <div>
+                    <p className="font-medium">Phone</p>
+                    <p className="text-gray-600">+254 746 160 768</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Mail className="w-5 h-5 text-blue-600 mt-1" />
+                  <div>
+                    <p className="font-medium">Email</p>
+                    <p className="text-gray-600">info@reytechnologies.com</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-blue-600 mt-1" />
+                  <div>
+                    <p className="font-medium">Location</p>
+                    <p className="text-gray-600">Nairobi, Kenya</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          {/* Message Field */}
-          <div>
-            <label className="block text-sm font-semibold text-dark mb-2">Message</label>
-            <textarea
-              name="message"
-              value={formData.message}
-              onChange={handleChange}
-              disabled={status === 'submitting'}
-              rows="6"
-              className={`w-full border-2 rounded-lg px-4 py-3 focus:outline-none transition-all resize-none ${
-                errors.message 
-                  ? 'border-red-500 focus:border-red-600' 
-                  : 'border-primary focus:border-secondary focus:ring-2 focus:ring-primary focus:ring-opacity-20'
-              } disabled:opacity-50 disabled:bg-gray-100`}
-              placeholder="Your message here..."
-            />
-            <div className="flex justify-between mt-2">
-              <p className="text-red-500 text-sm">{errors.message || ''}</p>
-              <p className="text-gray-500 text-sm">{formData.message.length}/500</p>
+            <div className="bg-blue-50 rounded-2xl p-8 border border-blue-100">
+              <h4 className="font-semibold text-blue-900 mb-2">Response Time</h4>
+              <p className="text-blue-700">
+                We typically respond within <strong>24 hours</strong> during business days.
+              </p>
             </div>
           </div>
-
-          {/* Status Messages */}
-          {status === 'success' && (
-            <p className="bg-green-100 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
-              ✓ Thanks for reaching out! We'll get back to you soon.
-            </p>
-          )}
-
-          {status === 'error' && (
-            <p className="bg-red-100 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
-              ✗ Something went wrong. Please try again.
-            </p>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={status === 'submitting'}
-            className="w-full bg-accent text-white py-3 rounded-lg font-semibold text-lg hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105"
-          >
-            {status === 'submitting' ? 'Sending...' : 'Send Message'}
-          </button>
-        </form>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
 
