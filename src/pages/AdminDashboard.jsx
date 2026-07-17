@@ -7,11 +7,11 @@ import {
   MessageSquare, TrendingUp, Clock, 
   CheckCircle, XCircle, Eye, RefreshCw,
   Search, ChevronLeft, ChevronRight,
-  Edit, Trash2, Download, Filter,
-  Mail, Phone, Calendar, Tag, AlertCircle, Users
+  Edit, Trash2, Download
 } from "lucide-react";
 import { authFetch } from "../utils/api";
 import { useAuth } from "../hooks/useAuth";
+import SafeMessage from "../components/SafeMessage";
 
 const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
@@ -30,6 +30,7 @@ function AdminDashboard() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState({});
+  const [isMounted, setIsMounted] = useState(true);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -40,7 +41,10 @@ function AdminDashboard() {
 
   const ITEMS_PER_PAGE = 10;
 
+  // ✅ FIXED: Load data with mount check
   const loadData = async () => {
+    if (!isMounted) return;
+    
     if (!isAuthenticated) {
       setError('Please log in to access the dashboard');
       setLoading(false);
@@ -55,6 +59,8 @@ function AdminDashboard() {
         authFetch('/api/inquiries'),
         authFetch('/api/analytics/summary')
       ]);
+      
+      if (!isMounted) return;
       
       const inquiriesList = inquiriesData.inquiries || [];
       const summaryList = summaryData.summary || [];
@@ -79,6 +85,7 @@ function AdminDashboard() {
         conversionRate,
       });
     } catch (err) {
+      if (!isMounted) return;
       console.error('Error loading data:', err);
       setError(err.message || 'Failed to load dashboard data');
       
@@ -86,25 +93,33 @@ function AdminDashboard() {
         logout();
       }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
   };
 
+  // ✅ FIXED: useEffect runs once on mount
   useEffect(() => {
+    setIsMounted(true);
     loadData();
-  }, [isAuthenticated]);
+    
+    return () => {
+      setIsMounted(false);
+    };
+  }, []); // Empty dependency array = run once
 
   // Export to CSV
   const exportToCSV = () => {
     const headers = ['ID', 'Name', 'Email', 'Phone', 'Subject', 'Message', 'Status', 'Date'];
     const rows = inquiries.map(inq => [
       inq.id,
-      inq.name,
-      inq.email,
+      inq.name || '',
+      inq.email || '',
       inq.phone || '',
       inq.subject || '',
-      inq.message,
-      inq.status,
+      inq.message || '',
+      inq.status || 'pending',
       new Date(inq.created_at).toLocaleDateString()
     ]);
     
@@ -124,7 +139,7 @@ function AdminDashboard() {
       await authFetch(`/api/inquiries/${id}`, { method: 'PATCH' });
       loadData();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Failed to mark as contacted');
     }
   };
 
@@ -135,21 +150,27 @@ function AdminDashboard() {
       await authFetch(`/api/inquiries/${id}`, { method: 'DELETE' });
       loadData();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Failed to delete inquiry');
     }
   };
 
   // Handle update inquiry
   const handleUpdateInquiry = async (id, data) => {
     try {
-      await authFetch(`/api/inquiries/${id}`, {
+      const response = await authFetch(`/api/inquiries/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data)
       });
-      loadData();
+      
+      await loadData();
       setShowEditModal(false);
+      
+      if (response.success) {
+        alert('✅ Inquiry updated successfully!');
+      }
     } catch (err) {
-      alert(err.message);
+      console.error('Update error:', err);
+      alert(`Failed to update inquiry: ${err.message || 'Please try again'}`);
     }
   };
 
@@ -168,12 +189,13 @@ function AdminDashboard() {
 
   // Filter and search inquiries
   const filteredInquiries = inquiries.filter(inq => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
-      inq.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inq.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inq.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inq.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inq.subject?.toLowerCase().includes(searchTerm.toLowerCase());
+      (inq.name || '').toLowerCase().includes(searchLower) ||
+      (inq.email || '').toLowerCase().includes(searchLower) ||
+      (inq.message || '').toLowerCase().includes(searchLower) ||
+      (inq.phone || '').toLowerCase().includes(searchLower) ||
+      (inq.subject || '').toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === 'all' || inq.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -191,11 +213,12 @@ function AdminDashboard() {
     { name: 'Contacted', value: stats.contacted }
   ].filter(d => d.value > 0);
 
-  // Handle logout
+  // Handle logout redirect
   const goToLogin = () => {
     window.location.href = '/admin/login';
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -220,6 +243,7 @@ function AdminDashboard() {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -302,8 +326,8 @@ function AdminDashboard() {
               </div>
             </div>
             <div className="mt-4 flex items-center text-xs text-gray-500">
-              <AlertCircle className="w-3 h-3 mr-1 text-yellow-500" />
-              Need attention
+              <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
+              Awaiting response
             </div>
           </div>
 
@@ -494,15 +518,15 @@ function AdminDashboard() {
                       <td className="px-4 py-3">
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
-                            {inq.name?.charAt(0).toUpperCase() || '?'}
+                            {(inq.name || '?').charAt(0).toUpperCase()}
                           </div>
                           <span className="ml-3 text-sm font-medium text-gray-900 truncate max-w-[100px]">
-                            {inq.name}
+                            {inq.name || 'Unknown'}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[120px]">
-                        {inq.email}
+                        {inq.email || '—'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell truncate max-w-[120px]">
                         {inq.phone || '—'}
@@ -511,7 +535,7 @@ function AdminDashboard() {
                         {inq.subject || '—'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell truncate max-w-[150px]">
-                        {inq.message}
+                        <SafeMessage text={inq.message} maxLength={100} />
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -526,11 +550,11 @@ function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">
-                        {new Date(inq.created_at).toLocaleDateString('en-US', {
+                        {inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'
-                        })}
+                        }) : '—'}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
@@ -602,13 +626,19 @@ function AdminDashboard() {
 
       {/* Detail Modal */}
       {showDetailModal && selectedInquiry && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+        >
           <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Inquiry Details</h3>
+              <h3 id="modal-title" className="text-lg font-semibold text-gray-900">Inquiry Details</h3>
               <button
                 onClick={() => setShowDetailModal(false)}
                 className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Close modal"
               >
                 <XCircle className="w-5 h-5 text-gray-500" />
               </button>
@@ -616,11 +646,11 @@ function AdminDashboard() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Name</label>
-                <p className="text-sm font-medium text-gray-900 mt-1">{selectedInquiry.name}</p>
+                <p className="text-sm font-medium text-gray-900 mt-1">{selectedInquiry.name || 'Unknown'}</p>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</label>
-                <p className="text-sm text-gray-900 mt-1">{selectedInquiry.email}</p>
+                <p className="text-sm text-gray-900 mt-1">{selectedInquiry.email || '—'}</p>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</label>
@@ -638,20 +668,20 @@ function AdminDashboard() {
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-yellow-100 text-yellow-800'
                   }`}>
-                    {selectedInquiry.status}
+                    {selectedInquiry.status || 'pending'}
                   </span>
                 </p>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Message</label>
-                <p className="text-sm text-gray-700 mt-1 p-3 bg-gray-50 rounded-lg whitespace-pre-wrap">
-                  {selectedInquiry.message}
-                </p>
+                <div className="text-sm text-gray-700 mt-1 p-3 bg-gray-50 rounded-lg whitespace-pre-wrap break-words">
+                  <SafeMessage text={selectedInquiry.message} />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Received</label>
                 <p className="text-sm text-gray-900 mt-1">
-                  {new Date(selectedInquiry.created_at).toLocaleString()}
+                  {selectedInquiry.created_at ? new Date(selectedInquiry.created_at).toLocaleString() : '—'}
                 </p>
               </div>
             </div>
@@ -680,13 +710,19 @@ function AdminDashboard() {
 
       {/* Edit Modal */}
       {showEditModal && selectedInquiry && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-modal-title"
+        >
           <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Edit Inquiry</h3>
+              <h3 id="edit-modal-title" className="text-lg font-semibold text-gray-900">Edit Inquiry</h3>
               <button
                 onClick={() => setShowEditModal(false)}
                 className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Close edit modal"
               >
                 <XCircle className="w-5 h-5 text-gray-500" />
               </button>

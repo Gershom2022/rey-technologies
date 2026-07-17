@@ -193,7 +193,7 @@ function Contact() {
             <div className="bg-blue-50 rounded-2xl p-8 border border-blue-100">
               <h4 className="font-semibold text-blue-900 mb-2">Response Time</h4>
               <p className="text-blue-700">
-                We typically respond within <strong>24 hours</strong> during business days.
+                We typically respond within <strong>24 Hours</strong> during business days.
               </p>
             </div>
           </div>
