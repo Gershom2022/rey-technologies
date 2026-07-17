@@ -10,14 +10,13 @@ export function useAuth() {
   }, []);
 
   const checkAuth = () => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const token = localStorage.getItem('adminToken');
     setIsAuthenticated(!!token);
     setLoading(false);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
+    localStorage.removeItem('adminToken');
     setIsAuthenticated(false);
     window.location.href = '/admin/login';
   };

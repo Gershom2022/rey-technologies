@@ -1,13 +1,13 @@
-const API_URL = ''; // EMPTY - use relative paths
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export async function authFetch(path, options = {}) {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  const token = localStorage.getItem('adminToken');
   
   if (!token) {
     throw new Error('No authentication token found. Please login.');
   }
 
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -19,8 +19,7 @@ export async function authFetch(path, options = {}) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     if (response.status === 401) {
-      localStorage.removeItem('token');
-      sessionStorage.removeItem('token');
+      localStorage.removeItem('adminToken');
       window.location.href = '/admin/login';
       throw new Error('Session expired. Please login again.');
     }
@@ -31,7 +30,7 @@ export async function authFetch(path, options = {}) {
 }
 
 export async function publicFetch(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
