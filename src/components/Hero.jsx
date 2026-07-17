@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronRight } from "lucide-react";
-import heroBackground from "../assets/rey_technologies_background.png";
+import heroBackground from "../assets/Rey_technologies_background.png";
 
 function Hero() {
   return (
